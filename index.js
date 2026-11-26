@@ -19,8 +19,8 @@ const UUID = process.env.UUID || '182e189d-3e36-4b7a-9375-64d02e600239'; // 使�
 const NEZHA_SERVER = process.env.NEZHA_SERVER || '';        // 哪吒v1填写形式: nz.abc.com:8008  哪吒v0填写形式：nz.abc.com
 const NEZHA_PORT = process.env.NEZHA_PORT || '';            // 使用哪吒v1请留空，哪吒v0需填写
 const NEZHA_KEY = process.env.NEZHA_KEY || '';              // 哪吒v1的NZ_CLIENT_SECRET或哪吒v0的agent密钥
-const ARGO_DOMAIN = process.env.ARGO_DOMAIN || 'nmo.emituofuo.dpdns.org';          // 固定隧道域名,留空即启用临时隧道
-const ARGO_AUTH = process.env.ARGO_AUTH || 'eyJhIjoiZTA0NjExYjY0MTM1YmExNDNmNTQ1NmY2YTg5Yzk1MmIiLCJ0IjoiYmFkNGEwOWEtMWYzZi00ZGNiLTgyNWYtMWU5YjEwM2UyNDY3IiwicyI6Ik56WXhOekprTVRBdFlqRXhNQzAwT1daaExXRmtaVEV0TURaak9XSTJNV1V3TWpGaiJ9';              // 固定隧道密钥json或token,留空即启用临时隧道,json获取地址：https://json.zone.id
+const ARGO_DOMAIN = process.env.ARGO_DOMAIN || '';          // 固定隧道域名,留空即启用临时隧道
+const ARGO_AUTH = process.env.ARGO_AUTH || '';              // 固定隧道密钥json或token,留空即启用临时隧道,json获取地址：https://json.zone.id
 const ARGO_PORT = process.env.ARGO_PORT || 8001;            // 固定隧道端口,使用token需在cloudflare后台设置和这里一致
 const S5_PORT = process.env.S5_PORT || '';                  // socks5端口，支持多端口的可以填写，否则留空
 const HY2_PORT = process.env.HY2_PORT || '';                // hy2端口，支持多端口的可以填写，否则留空
@@ -165,8 +165,6 @@ function generateOrLoadKeyPair() {
     if (privateKeyMatch && publicKeyMatch) {
       privateKey = privateKeyMatch[1].trim();
       publicKey = publicKeyMatch[1].trim();
-      console.log('Private Key:', privateKey);
-      console.log('Public Key:', publicKey);
       return;
     }
   }
@@ -174,44 +172,14 @@ function generateOrLoadKeyPair() {
   privateKey = keypair.privateKey;
   publicKey = keypair.publicKey;
   fs.writeFileSync(keyFilePath, `PrivateKey: ${privateKey}\nPublicKey: ${publicKey}\n`, 'utf8');
-  console.log('Private Key:', privateKey);
-  console.log('Public Key:', publicKey);
 }
 
 // TLS 证书生成
-const FALLBACK_EC_KEY =
-  '-----BEGIN EC PARAMETERS-----\n' +
-  'BggqhkjOPQMBBw==\n' +
-  '-----END EC PARAMETERS-----\n' +
-  '-----BEGIN EC PRIVATE KEY-----\n' +
-  'MHcCAQEEIM4792SEtPqIt1ywqTd/0bYidBqpYV/++siNnfBYsdUYoAoGCCqGSM49\n' +
-  'AwEHoUQDQgAE1kHafPj07rJG+HboH2ekAI4r+e6TL38GWASANnngZreoQDF16ARa\n' +
-  '/TsyLyFoPkhLxSbehH/NBEjHtSZGaDhMqQ==\n' +
-  '-----END EC PRIVATE KEY-----\n';
-
-const FALLBACK_CERT =
-  '-----BEGIN CERTIFICATE-----\n' +
-  'MIIBejCCASGgAwIBAgIUfWeQL3556PNJLp/veCFxGNj9crkwCgYIKoZIzj0EAwIw\n' +
-  'EzERMA8GA1UEAwwIYmluZy5jb20wHhcNMjUwOTE4MTgyMDIyWhcNMzUwOTE2MTgy\n' +
-  'MDIyWjATMREwDwYDVQQDDAhiaW5nLmNvbTBZMBMGByqGSM49AgEGCCqGSM49AwEH\n' +
-  'A0IABNZB2nz49O6yRvh26B9npACOK/nuky9/BlgEgDZ54Ga3qEAxdegEWv07Mi8h\n' +
-  'aD5IS8Um3oR/zQRIx7UmRmg4TKmjUzBRMB0GA1UdDgQWBBTV1cFID7UISE7PLTBR\n' +
-  'BfGbgkrMNzAfBgNVHSMEGDAWgBTV1cFID7UISE7PLTBRBfGbgkrMNzAPBgNVHRMB\n' +
-  'Af8EBTADAQH/MAoGCCqGSM49BAMCA0cAMEQCIAIDAJvg0vd/ytrQVvEcSm6XTlB+\n' +
-  'eQ6OFb9LbLYL9f+sAiAffoMbi4y/0YUSlTtz7as9S8/lciBF5VCUoVIKS+vX2g==\n' +
-  '-----END CERTIFICATE-----\n';
-
 function ensureTlsCertificates(certPath, keyPath) {
   if (fs.existsSync(certPath) && fs.existsSync(keyPath)) return;
   fs.mkdirSync(path.dirname(certPath), { recursive: true });
-  try {
-    execSync('openssl version', { stdio: 'ignore' });
-    execSync(`openssl ecparam -genkey -name prime256v1 -out "${keyPath}"`, { stdio: 'ignore' });
-    execSync(`openssl req -new -x509 -days 3650 -key "${keyPath}" -out "${certPath}" -subj "/CN=bing.com"`, { stdio: 'ignore' });
-    return;
-  } catch (e) { /* openssl not available */ }
-  fs.writeFileSync(keyPath, FALLBACK_EC_KEY);
-  fs.writeFileSync(certPath, FALLBACK_CERT);
+  execSync(`openssl ecparam -genkey -name prime256v1 -out "${keyPath}"`, { stdio: 'ignore' });
+  execSync(`openssl req -new -x509 -days 3650 -key "${keyPath}" -out "${certPath}" -subj "/CN=bing.com"`, { stdio: 'ignore' });
 }
 
 // 计算证书的 SHA-256 指纹，优先使用 openssl，不可用时用 Node.js crypto 兜底
